@@ -1,0 +1,14 @@
+{
+  "name": "amazon-connect-flow-sync",
+  "version": "0.0.0",
+  "description": "sync contact flows between a local directory and an amazon connect instance",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Infinity Works",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "puppeteer": "^3.1.0"
+  }
+}
