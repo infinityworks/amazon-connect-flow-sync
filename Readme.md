@@ -10,6 +10,8 @@ Requires NodeJS 12+
 ## Usage
 
 ```bash
+npm install
+
 export INSTANCE_ID="my-connect-instance" # ID of your Amazon Connect instance (the start of its url)
 export USERNAME="cicd_user"              # The username of a user in your Amazon Connect instance that has permissions to export contact flows
 export PASSWORD="c1cd_pAssw0rd!"         # The password for that user
