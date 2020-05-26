@@ -5,7 +5,7 @@
 ## Requirements
 
 Requires a Chrome browser to be installed.
-Requires NodeJS 12+
+Requires NodeJS 11+
 
 ## Usage
 
