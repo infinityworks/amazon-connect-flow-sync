@@ -1,3 +1,5 @@
+const fs = require('fs');
+const {promisify} = require('util');
 const puppeteer = require('puppeteer');
 
 const INSTANCE_ID = process.env.INSTANCE_ID;
@@ -51,27 +53,22 @@ const login = async page => {
 }
 
 const listFlows = async page => {
-    // Go to flows list page.
-    await page.goto(`https://${INSTANCE_ID}.awsapps.com/connect/contact-flows#?name=${FLOW_FILTER}`);
-    // Wait for the list to load.
-    await page.waitForSelector('a[href^="contact-flows/edit?"]', { visible: true });
-    // Get all the links from the table.
-    const hrefs = await page.evaluate(() => Array.from(document.querySelectorAll('a[href^="contact-flows/edit?"'), el => el.href));
-    // Extract the ARNs.
-    return hrefs.map(h => h.match(/contact-flows\/edit\?id=(.+)/)).flatMap(m => m && m.length>=2 ? [m[1]] : []);
+    const filter = FLOW_FILTER != '' ? `filter=%7B%22name%22:%22${FLOW_FILTER}%22%7D&` : ''
+    const flows = await page.evaluate(async (instanceId, filter) => {
+        const res = await fetch(`https://${instanceId}.awsapps.com/connect/entity-search/contact-flows?${filter}&pageSize=100&startIndex=0`);
+        const data = await res.json();
+        return data.results.map(({ arn, name }) => ({ arn, name }));
+    }, INSTANCE_ID, filter);
+    return flows
 }
 
-const downloadFlow = async (page, flowId) => {
-    // Go to the edit page.
-    await page.goto(`https://${INSTANCE_ID}.awsapps.com/connect/contact-flows/edit?id=${flowId}`);
-    // Wait for the flow to finish loading (there are boxes in the svg).
-    await page.waitForFunction(() => document.querySelectorAll("#contact-flow-outer-area #paper svg foreignObject").length > 0);
-    // Click the export flow button in the dropdown menu.
-    await page.evaluate(() => Array.from(document.querySelectorAll("#cf-dropdown a")).find(e => e.textContent.includes("Export flow")).click());
-    // Add .json to the end of the file path.
-    await page.type('input[ng-model="filename"]', '.json');
-    // Click on export button.
-    await page.evaluate(() => document.querySelector('awsui-button[text="Export"] button').click());
+const downloadFlow = async (page, {name, arn}) => {
+    const flow = await page.evaluate(async (instanceId, arn) => {
+        const res = await fetch(`https://${instanceId}.awsapps.com/connect/contact-flows/export?id=${arn}&status=published`);
+        const data =  await res.json();
+        return JSON.parse(data[0].contactFlowContent);
+    }, INSTANCE_ID, arn);
+    await promisify(fs.writeFile)(`${DOWNLOAD_PATH}/${name}.json`, JSON.stringify(flow, null, 2));
 }
 
 const print = (str='') => process.stdout.write(str);
@@ -98,23 +95,18 @@ const reprint = (str='') => process.stdout.write(`\r${str}`);
             return
         }
 
-        let fetched = 0;
         print(`📥 Downloading flows: 0/${flows.length}`);
-        await Promise.all(flows.map(async id => {
-            const p = await startPage(browser);
-            await downloadFlow(p, id);
-            fetched++;
-            reprint(`📥 Downloading flows: ${fetched}/${flows.length}`);
-        }));
+        for (let f in flows) {
+            await downloadFlow(page, flows[f]);
+            reprint(`📥 Downloading flows: ${parseInt(f)+1}/${flows.length}`);
+        };
         println(' ✔');
-
-        await page.waitFor(3000);
 
         print(`🧹 Tidying up`);
         await browser.close()
         println(' ✔');    
     } catch (err) {
-        println(`❌ ${err}`);
+        println(` ❌ ${err}`);
         process.exit(-1);
     }
     process.exit(0);
