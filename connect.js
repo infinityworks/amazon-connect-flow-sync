@@ -15,7 +15,7 @@ const startBrowser = async ({chromiumPath}={}) =>
             '--disable-setuid-sandbox',
             '--no-first-run',
             '--no-zygote',
-            //'--single-process',
+            '--single-process',
             '--disable-extensions'
         ]
     });
