@@ -50,15 +50,20 @@ const listFlows = instanceId => page => async ({filter}) =>
         const filterParam = filter ? `filter=%7B%22name%22:%22${filter}%22%7D&` : ''
         const res = await fetch(`https://${instanceId}.awsapps.com/connect/entity-search/contact-flows?${filterParam}&pageSize=100&startIndex=0`);
         const data = await res.json();
-        return data.results.map(({ arn, name }) => ({ arn, name }));
+        return data.results;
     }, instanceId, filter);
 
-const getFlow = instanceId => page => async ({ name, arn }) => 
-    await page.evaluate(async (instanceId, arn) => {
-        const res = await fetch(`https://${instanceId}.awsapps.com/connect/contact-flows/export?id=${arn}&status=published`);
+const getFlow = instanceId => page => async ({ arn, contactFlowStatus='published', name, description, contactFlowType }) => 
+    await page.evaluate(async (instanceId, arn, status, name, description, type) => {
+        const res = await fetch(`https://${instanceId}.awsapps.com/connect/contact-flows/export?id=${arn}&status=${status}`);
         const data =  await res.json();
-        return JSON.parse(data[0].contactFlowContent);
-    }, instanceId, arn);
+        const flow = JSON.parse(data[0].contactFlowContent);
+        flow.metadata.status = data[0].contactFlowStatus;
+        flow.metadata.name = name;
+        flow.metadata.description = description;
+        flow.metadata.type = type;
+        return flow;
+    }, instanceId, arn, contactFlowStatus, name, description, contactFlowType);
 
 const getToken = async page =>
     await page.evaluate(() =>
