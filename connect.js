@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 
 const startBrowser = async ({chromiumPath}={}) =>
     await puppeteer.launch({
-        headless: false,
+        headless: true,
         executablePath: chromiumPath,
         args: [
             '--disable-gpu',
