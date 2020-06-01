@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 
 const startBrowser = async ({chromiumPath}={}) =>
     await puppeteer.launch({
-        headless: true,
+        headless: false,
         executablePath: chromiumPath,
         args: [
             '--disable-gpu',
@@ -38,7 +38,7 @@ const login = instanceId => page => async (username, password) => {
     await page.click('#wdc_login_button');
     const success = await Promise.race([
         page.waitForNavigation({ waitUntil: 'networkidle0' }).then(() => true),
-        page.waitForFunction(`document.querySelector('body') && document.querySelector('body').innerHTML.includes('Authentication Failed')`).finally(() => false),
+        page.waitForFunction(`document.querySelector('body') && document.querySelector('body').innerHTML.includes('Authentication Failed')`).then(() => false),
     ]);
     if (!success) {
         throw new Error('Invalid username or password')

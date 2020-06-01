@@ -26,7 +26,7 @@ program
             println(' ✔');
 
             username = username || (await inquirer.prompt([{ type: 'input', name: 'username', message: 'Username:' }])).username;
-            password = password || (await inquirer.prompt([{ type: 'password', name: 'password', message: 'Password:', mask: '*' }])).username;
+            password = password || (await inquirer.prompt([{ type: 'password', name: 'password', message: 'Password:', mask: '*' }])).password;
 
             print(`🔑 Logging in as ${username}`)
             await connect.login(username, password);
