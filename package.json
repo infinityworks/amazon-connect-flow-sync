@@ -13,7 +13,9 @@
   "license": "UNLICENSED",
   "dependencies": {
     "commander": "^5.1.0",
+    "form-data": "^3.0.0",
     "inquirer": "^7.1.0",
+    "node-fetch": "^2.6.0",
     "puppeteer": "^3.1.0"
   }
 }

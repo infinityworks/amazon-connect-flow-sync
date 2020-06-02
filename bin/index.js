@@ -23,17 +23,16 @@ program
     .option('-c, --chrome <path>', 'Chromium path override')
     .option('--skip-unpublished', 'Does not download flows that have not been published')
     .action(async (instanceId, { username, password, filter, dest, chrome, skipUnpublished }) => {
-        let connect;
         try {
-            print(`💻 Starting headless chrome for ${instanceId}`)
-            connect = await Connect(instanceId, { chromiumPath: chrome });
-            println(' ✔');
-
-            username = username || (await inquirer.prompt([{ type: 'input', name: 'username', message: 'Username:' }])).username;
-            password = password || (await inquirer.prompt([{ type: 'password', name: 'password', message: 'Password:', mask: '*' }])).password;
-
+            const auth = await Connect.getAuthType(instanceId);
+            if (auth == Connect.AUTH_TYPE_FORM) {
+                username = username || (await inquirer.prompt([{ type: 'input', name: 'username', message: 'Username:' }])).username;
+                password = password || (await inquirer.prompt([{ type: 'password', name: 'password', message: 'Password:', mask: '*' }])).password;
+            }            
+            
+            println(`💻 Starting headless chrome for ${instanceId}`)
             print(`🔑 Logging in as ${username}`)
-            await connect.login(username, password);
+            const connect = await Connect(instanceId, { chromiumPath: chrome, username, password });
             println(' ✔');
 
             print(`🔍 Searching for flows${filter !== '' ? ` with '${filter}' in their name` : ''}`)
@@ -51,19 +50,17 @@ program
                 print(`📥 Downloading flows: 0/${flows.length}`);
                 for (let f in flows) {
                     const flow = await connect.getFlow(flows[f]);
-                    promisify(writeFile)(`${dest}/${flows[f].name}.json`, JSON.stringify(flow, null, 2));
+                    await promisify(writeFile)(`${dest}/${flows[f].name}.json`, JSON.stringify(flow, null, 2));
                     reprint(`📥 Downloading flows: ${parseInt(f) + 1}/${flows.length}`);
                 };
+                println(' ✔');
             }
-            println(' ✔');
         } catch (err) {
             println(` ❌ ${err}`);
-            exitCode = -1;
-        } finally {
-            print(`🧹 Tidying up`);
-            await connect.close().then(() => println(' ✔'), err => println(` ❌ ${err}`))
-            process.exit(exitCode);
+            process.exit(-1);
         }
+        println(`😎 Done`)
+        process.exit(0);
     });
 
 program.parse(process.argv);
