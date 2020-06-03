@@ -1,4 +1,5 @@
 const fetch = require('node-fetch')
+const AWS = require('aws-sdk');
 const FormData = require('form-data');
 const puppeteer = require('puppeteer');
 
@@ -25,12 +26,12 @@ const startBrowser = async ({ chromiumPath } = {}) =>
         ]
     });
 
-const getAuthType = async instanceId => {
+const getAuthType = async instanceAlias => {
     try {
         const form = new FormData()
-        form.append('directoryAliasOrId', instanceId)
+        form.append('directoryAliasOrId', instanceAlias)
         form.append('landat', '/connect/home')
-        const res = await fetch(`https://${instanceId}.awsapps.com/connect/login/redirect`, {
+        const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/login/redirect`, {
             method: 'POST',
             redirect: 'manual',
             body: form
@@ -39,15 +40,15 @@ const getAuthType = async instanceId => {
         return redirect === null ? AUTH_TYPE_FEDERATED : AUTH_TYPE_FORM
     } catch (err) {
         console.log(err)
-        throw new Error(`invalid instance ID: ${instanceId}`)
+        throw new Error(`invalid instance ID: ${instanceAlias}`)
     }
 };
 
-const loginForm = (instanceId, chromiumPath) => async (username, password) => {
+const loginForm = async (instanceAlias, username, password, { chromiumPath }) => {
     const browser = await startBrowser({ chromiumPath });
     try {
         const page = await browser.newPage()
-        await page.goto(`https://${instanceId}.awsapps.com/connect/home`);
+        await page.goto(`https://${instanceAlias}.awsapps.com/connect/home`);
         await page.waitForSelector('#wdc_username', { visible: true });
         await page.type('#wdc_username', username);
         await page.type('#wdc_password', password);
@@ -66,12 +67,18 @@ const loginForm = (instanceId, chromiumPath) => async (username, password) => {
     }
 }
 
-const listFlows = (instanceId, token) => async ({ filter }={}) => {
+const loginFederated = async (instanceId) => {
+    const connect = new AWS.Connect();
+    const res = await connect.getFederationToken({ InstanceId: instanceId }).promise();
+    return res.Credentials.AccessToken;
+};
+
+const listFlows = (instanceAlias, token) => async ({ filter }={}) => {
     if (!token) {
         throw new Error('not logged in');
     }
     const filterParam = filter ? `filter=%7B%22name%22:%22${filter}%22%7D&` : ''
-    const res = await fetch(`https://${instanceId}.awsapps.com/connect/entity-search/contact-flows?${filterParam}&pageSize=100&startIndex=0`, {
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/entity-search/contact-flows?${filterParam}&pageSize=100&startIndex=0`, {
         headers: {
             cookie: `lily-auth-prod-lhr=${token}`
         },
@@ -80,11 +87,11 @@ const listFlows = (instanceId, token) => async ({ filter }={}) => {
     return data.results;
 }
 
-const getFlow = (instanceId, token) => async ({ arn, contactFlowStatus = 'published', name, description, contactFlowType }) => {
+const getFlow = (instanceAlias, token) => async ({ arn, contactFlowStatus = 'published', name, description, contactFlowType }) => {
     if (!token) {
         throw new Error('not logged in');
     }
-    const res = await fetch(`https://${instanceId}.awsapps.com/connect/contact-flows/export?id=${arn}&status=${contactFlowStatus}`, {
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/export?id=${arn}&status=${contactFlowStatus}`, {
         headers: {
             cookie: `lily-auth-prod-lhr=${token}`
         },
@@ -102,15 +109,17 @@ const getToken = async page =>
     await page.evaluate(() =>
         angular.element(document.getElementById('angularContainer')).scope().token);
 
-module.exports = async (instanceId, { chromiumPath, username, password }) => {
-    const auth = await getAuthType(instanceId)
+module.exports = async (instanceAlias, { chromiumPath, username, password, instanceId }) => {
+    const auth = await getAuthType(instanceAlias)
+    let token;
     if (auth == AUTH_TYPE_FEDERATED) {
-        throw new Error('cannot handle federated instances...yet');
+        token = await loginFederated(instanceId);
+    } else {
+        token = await loginForm(instanceAlias, username, password, { chromiumPath });
     }
-    let token = await loginForm(instanceId, chromiumPath)(username, password);
     return {
-        listFlows: listFlows(instanceId, token),
-        getFlow: getFlow(instanceId, token),
+        listFlows: listFlows(instanceAlias, token),
+        getFlow: getFlow(instanceAlias, token),
     }
 }
 

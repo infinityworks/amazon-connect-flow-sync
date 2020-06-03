@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-const program = require('commander');
+const { program } = require('commander');
 const inquirer = require('inquirer');
 const Connect = require('../connect');
+const AWS = require('aws-sdk');
 const { promisify } = require('util');
 const { writeFile } = require('fs');
 
@@ -13,26 +14,33 @@ const reprint = (str = '') => process.stdout.write(`\r${str}`);
 let exitCode = 0;
 
 program
-    .command('export <instanceId>')
+    .command('export <instanceAlias>')
     .alias('e')
     .description('download flows from connect')
     .option('-u, --username <login>', 'Connect admin username')
     .option('-p, --password <login>', 'Connect admin password')
+    .option('-i, --instance-id <instanceId>', 'Connect instance UUID')
     .option('-f, --filter <substring>', 'Flow search filter', '')
     .option('-d, --dest <path>', 'Download directory', '.')
     .option('-c, --chrome <path>', 'Chromium path override')
     .option('--skip-unpublished', 'Does not download flows that have not been published')
-    .action(async (instanceId, { username, password, filter, dest, chrome, skipUnpublished }) => {
+    .action(async (instanceAlias, { username, password, filter, dest, chrome, skipUnpublished, instanceId }) => {
         try {
-            const auth = await Connect.getAuthType(instanceId);
+            const auth = await Connect.getAuthType(instanceAlias);
             if (auth == Connect.AUTH_TYPE_FORM) {
                 username = username || (await inquirer.prompt([{ type: 'input', name: 'username', message: 'Username:' }])).username;
                 password = password || (await inquirer.prompt([{ type: 'password', name: 'password', message: 'Password:', mask: '*' }])).password;
-            }            
-            
-            println(`💻 Starting headless chrome for ${instanceId}`)
-            print(`🔑 Logging in as ${username}`)
-            const connect = await Connect(instanceId, { chromiumPath: chrome, username, password });
+                println(`💻 Starting headless chrome for ${instanceAlias}`);
+                print(`🔑 Logging in as ${username}`);
+            } else {
+                if (instanceId === '') {
+                    throw new Error('instanceId is required for federated login');
+                }
+                const sts = new AWS.STS();
+                const id = await sts.getCallerIdentity().promise();
+                print(`🔑 Using AWS federated login for ${id.UserId.split(':').pop()}`)
+            }
+            const connect = await Connect(instanceAlias, { chromiumPath: chrome, username, password, instanceId });
             println(' ✔');
 
             print(`🔍 Searching for flows${filter !== '' ? ` with '${filter}' in their name` : ''}`)
