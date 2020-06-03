@@ -88,7 +88,9 @@ program
     .alias('u')
     .description('import flows into connect')
     .option('-s, --src <glob>', 'Flow files', './*.json')
-    .action(async (instanceAlias, { src }) => {
+    .option('--no-arn-fix', 'Dont let connect fix incorrect ARNs using matching resource name')
+    .option('--no-publish', 'Save flows only. Do not publish')
+    .action(async (instanceAlias, { src, arnFix, publish }) => {
         try {
             const connect = await initConnect({ instanceAlias, ...program });
 
@@ -113,7 +115,7 @@ program
                     if (!current) {
                         throw new Error(`no existing flow named ${flows[f].metadata.name}`)
                     }
-                    await connect.uploadFlow(current.arn, JSON.stringify(flows[f]), { publish: true })
+                    await connect.uploadFlow(current.arn, JSON.stringify(flows[f]), { publish: publish, fixARNs: arnFix })
                 };
                 reprint(`📤 Uploading flows ${flows.length}/${flows.length}`);
                 println(' ✔');

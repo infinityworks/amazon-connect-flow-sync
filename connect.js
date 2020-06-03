@@ -115,13 +115,52 @@ const getFlowEditToken = async (instanceAlias, token, flowARN) => {
     return match[1];
 };
 
-const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish=false}={}) => {
+const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editToken }={}) => {
+    if (!token) {
+        throw new Error('not logged in');
+    }
     if (!editToken) {
         editToken = await getFlowEditToken(instanceAlias, token, flowARN);
     }
-    flow = JSON.parse(flowJSON);
+    const flow = JSON.parse(flowJSON);
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/import?contactFlowType=${flow.metadata.type}&token=${editToken}`, {
+        method: 'POST',
+        body: JSON.stringify({
+            contactFlowType: flow.metadata.type,
+            token: editToken,
+            fileData: Buffer.from(flowJSON).toString('base64'),
+        }),
+        headers: {
+            "content-type": "application/json;charset=UTF-8",
+            ...fetchAuth(token).headers
+        },
+    });
+    if (res.status >= 400) {
+        throw new Error(`transform: status ${res.status}`)
+    }
+    if (!res.headers.get('Content-Type').startsWith("application/json")) {
+        throw new Error(`transform: html response`);
+    }
+    const [body] = await res.json();
+    if (body.errorType !== null) {
+        throw new Error(body.errorDetails);
+    }
+    return body.contactFlowContent;
+};
+
+const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish=false, fixARNs=true }={}) => {
+    if (!token) {
+        throw new Error('not logged in');
+    }
+    if (!editToken) {
+        editToken = await getFlowEditToken(instanceAlias, token, flowARN);
+    }
+    if (fixARNs) {
+        flowJSON = await fixFlowARNs(instanceAlias, token)(flowARN, flowJSON, { editToken });
+    }
+    const flow = JSON.parse(flowJSON);
     const [arn0, arnInstance, arn1, arnFlow] = flowARN.split('/');
-    res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/edit?token=${editToken}`, {
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/edit?token=${editToken}`, {
         method: 'POST',
         body: JSON.stringify({
             arn: flowARN,
@@ -143,10 +182,10 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
         },
     });
     if (res.status >= 400) {
-        throw new Error(`status ${res.status}`)
+        throw new Error(`upload: status ${res.status}`)
     }
     if (!res.headers.get('Content-Type').startsWith("application/json")) {
-        throw new Error(`html response`);
+        throw new Error(`upload: html response`);
     }
 };
 
@@ -162,6 +201,7 @@ module.exports = async (instanceAlias, { chromiumPath, username, password, insta
         listFlows: listFlows(instanceAlias, token),
         getFlow: getFlow(instanceAlias, token),
         uploadFlow: uploadFlow(instanceAlias, token),
+        fixFlowARNs: fixFlowARNs(instanceAlias, token),
     };
 };
 
