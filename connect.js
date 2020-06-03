@@ -115,7 +115,7 @@ const getFlowEditToken = async (instanceAlias, token, flowARN) => {
     return match[1];
 };
 
-const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editToken }={}) => {
+const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, fixLambdaARNs=true, serverlessStage }={}) => {
     if (!token) {
         throw new Error('not logged in');
     }
@@ -123,6 +123,18 @@ const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editTo
         editToken = await getFlowEditToken(instanceAlias, token, flowARN);
     }
     const flow = JSON.parse(flowJSON);
+    if (fixLambdaARNs) {
+        const destAccount = flowARN.match(/arn:aws:connect:[^:]+:([^:]+):/)[1];
+        flowJSON = flowJSON.replace(/arn:aws:lambda:[^:]+:([^:]+):function:([^:"]+)/g, (arn, account, name) => {
+            arn = arn.replace(account, destAccount);
+            const stage = name.match(/.+-([^\-]+)-[^\-]+$/)
+            if (serverlessStage && stage !== null) {
+                const newName = name.replace(`-${stage[1]}-`, `-${serverlessStage}-`)
+                arn = arn.replace(name, newName)
+            }
+            return arn;
+        });
+    }
     const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/import?contactFlowType=${flow.metadata.type}&token=${editToken}`, {
         method: 'POST',
         body: JSON.stringify({
@@ -135,11 +147,11 @@ const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editTo
             ...fetchAuth(token).headers
         },
     });
-    if (res.status >= 400) {
-        throw new Error(`transform: status ${res.status}`)
-    }
     if (!res.headers.get('Content-Type').startsWith("application/json")) {
         throw new Error(`transform: html response`);
+    }
+    if (res.status >= 400) {
+        throw new Error(`transform: status ${res.status}`)
     }
     const [body] = await res.json();
     if (body.errorType !== null) {
@@ -148,7 +160,7 @@ const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editTo
     return body.contactFlowContent;
 };
 
-const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish=false, fixARNs=true }={}) => {
+const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish = false, fixARNs = true, fixLambdaARNs = true, serverlessStage }={}) => {
     if (!token) {
         throw new Error('not logged in');
     }
@@ -156,7 +168,7 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
         editToken = await getFlowEditToken(instanceAlias, token, flowARN);
     }
     if (fixARNs) {
-        flowJSON = await fixFlowARNs(instanceAlias, token)(flowARN, flowJSON, { editToken });
+        flowJSON = await fixFlowARNs(instanceAlias, token)(flowARN, flowJSON, { editToken, fixLambdaARNs, serverlessStage });
     }
     const flow = JSON.parse(flowJSON);
     const [arn0, arnInstance, arn1, arnFlow] = flowARN.split('/');
@@ -181,11 +193,14 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
             ...fetchAuth(token).headers
         },
     });
-    if (res.status >= 400) {
-        throw new Error(`upload: status ${res.status}`)
-    }
     if (!res.headers.get('Content-Type').startsWith("application/json")) {
         throw new Error(`upload: html response`);
+    }
+    if (res.status == 400) {
+        const body = await res.json();
+        throw new Error(`upload: status ${res.status}, ${body.map(e => `${e.moduleId}:${e.errorType}:${e.errorDetails}`).join(', ')}`)
+    } else if (res.status > 400) {
+        throw new Error(`upload: status ${res.status}`)
     }
 };
 

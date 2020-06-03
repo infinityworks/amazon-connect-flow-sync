@@ -88,9 +88,11 @@ program
     .alias('u')
     .description('import flows into connect')
     .option('-s, --src <glob>', 'Flow files', './*.json')
-    .option('--no-arn-fix', 'Dont let connect fix incorrect ARNs using matching resource name')
+    .option('--no-arn-fix', 'Dont let connect fix incorrect ARNs using matching resource name') 
+    .option('--no-lambda-arn-fix', 'Dont coerce lambda ARN account numbers to match the account of the connect instance') 
+    .option('--serverless-stage <stage>', 'Dont coerce lambda ARN account numbers to match the account of the connect instance') 
     .option('--no-publish', 'Save flows only. Do not publish')
-    .action(async (instanceAlias, { src, arnFix, publish }) => {
+    .action(async (instanceAlias, { src, arnFix, lambdaArnFix, publish, serverlessStage }) => {
         try {
             const connect = await initConnect({ instanceAlias, ...program });
 
@@ -115,7 +117,7 @@ program
                     if (!current) {
                         throw new Error(`no existing flow named ${flows[f].metadata.name}`)
                     }
-                    await connect.uploadFlow(current.arn, JSON.stringify(flows[f]), { publish: publish, fixARNs: arnFix })
+                    await connect.uploadFlow(current.arn, JSON.stringify(flows[f]), { publish, fixARNs: arnFix, fixLambdaARNs: lambdaArnFix, serverlessStage })
                 };
                 reprint(`📤 Uploading flows ${flows.length}/${flows.length}`);
                 println(' ✔');
