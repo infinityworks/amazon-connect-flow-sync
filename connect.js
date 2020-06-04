@@ -98,6 +98,8 @@ const getFlow = (instanceAlias, token) => async ({ arn, contactFlowStatus = 'pub
     if (Array.isArray(flow.metadata)) {
         flow.metadata = flow.metadata.reduce((acc, obj) => ({...acc, ...obj}), {})
     }
+    const p = m => `${m.metadata.position.x.toString().padStart(4,'0')},${m.metadata.position.y.toString().padStart(4,'0')}`;
+    flow.modules.sort((a, b) => p(a).localeCompare(p(b)));
     flow.metadata.status = data[0].contactFlowStatus;
     flow.metadata.name = name;
     flow.metadata.description = description;
