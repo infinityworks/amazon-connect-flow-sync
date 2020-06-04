@@ -70,7 +70,8 @@ program
                 for (let f in flows) {
                     reprint(`📥 Downloading flows: ${f}/${flows.length} (${flows[f].name})`);
                     const flow = await connect.getFlow(flows[f]);
-                    await promisify(writeFile)(`${dest}/${flows[f].name}.json`, JSON.stringify(flow, null, 2));
+                    const fileContent = JSON.stringify(flow, null, 2).replace(/\n\s{10,}/g, " ").replace(/\n\s{8}}/g, " }")
+                    await promisify(writeFile)(`${dest}/${flows[f].name}.json`, fileContent);
                 };
                 reprint(`📥 Downloading flows ${flows.length}/${flows.length}`);
                 println(' ✔');
