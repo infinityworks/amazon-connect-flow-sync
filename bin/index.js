@@ -15,13 +15,23 @@ const reprint = (str = '') => {
     process.stdout.write(`\r${str}`);
 };
 
-let exitCode = 0;
-
 program
-    .option('-u, --username <login>', 'Connect admin username')
-    .option('-p, --password <login>', 'Connect admin password')
-    .option('-i, --instance-id <instanceId>', 'Connect instance UUID')
-    .option('-c, --chrome <path>', 'Chromium path override')
+    .name("connect-sync")
+    .usage("[auth options] <command> <instance_alias>")
+    .option('-u, --username <login>', 'Connect admin username (non-federated login)')
+    .option('-p, --password <login>', 'Connect admin password (non-federated login)')
+    .option('-i, --instance-id <instanceId>', 'Connect instance UUID (federated login)')
+    .option('-c, --chrome <path>', 'Chromium path override (non-federated login)')
+    .on('--help', () => {
+        console.log('');
+        console.log('Examples:');
+        console.log('  SAML2 login:');
+        console.log('    AWS_PROFILE=profile-with-permissions connect-sync --instance-id 12345678-9012-3456-7890-123456789012 <command> <instance_url>');
+        console.log('  Connect/AD login:');
+        console.log('    connect-sync --username cicd_admin_user --password "c1cd_pAssw0rd!"2 <command> <instance_url>');
+        console.log('  Connect/AD login (prompt for password):');
+        console.log('    connect-sync --username admin_user <command> <instance_url>');
+    })
 
 const initConnect = async ({ instanceAlias, username, password, instanceId, chrome }) => {
     const auth = await Connect.getAuthType(instanceAlias);
@@ -50,6 +60,11 @@ program
     .option('-f, --filter <substring>', 'Flow search filter', '')
     .option('-d, --dest <path>', 'Download directory', '.')
     .option('--skip-unpublished', 'Does not download flows that have not been published')
+    .on('--help', () => {
+        console.log('');
+        console.log('Example:');
+        console.log('  connect-sync -u admin download my-connect-app -f "login_" -d ./login-flows --skip-unpublished');
+    })
     .action(async (instanceAlias, { filter, dest, skipUnpublished }) => {
         try {
             const connect = await initConnect({ instanceAlias, ...program });
@@ -91,8 +106,13 @@ program
     .option('-s, --src <glob>', 'Flow files', './*.json')
     .option('--no-arn-fix', 'Dont let connect fix incorrect ARNs using matching resource name') 
     .option('--no-lambda-arn-fix', 'Dont coerce lambda ARN account numbers to match the account of the connect instance') 
-    .option('--serverless-stage <stage>', 'Dont coerce lambda ARN account numbers to match the account of the connect instance') 
+    .option('--serverless-stage <stage>', 'Modify serverless framework lambda named by setting the stage') 
     .option('--no-publish', 'Save flows only. Do not publish')
+    .on('--help', () => {
+        console.log('');
+        console.log('Example:');
+        console.log('  connect-sync -u admin upload my-connect-app -s "./login-flows/*.json" --serverless-stage prod');
+    })
     .action(async (instanceAlias, { src, arnFix, lambdaArnFix, publish, serverlessStage }) => {
         try {
             const connect = await initConnect({ instanceAlias, ...program });
