@@ -98,6 +98,12 @@ const getFlow = (instanceAlias, token) => async ({ arn, contactFlowStatus = 'pub
     if (Array.isArray(flow.metadata)) {
         flow.metadata = flow.metadata.reduce((acc, obj) => ({...acc, ...obj}), {})
     }
+    flow.metadata.entryPointPosition.x = Math.round(flow.metadata.entryPointPosition.x)
+    flow.metadata.entryPointPosition.y = Math.round(flow.metadata.entryPointPosition.y)
+    flow.modules.forEach(m => {
+        m.metadata.position.x = Math.round(m.metadata.position.x);
+        m.metadata.position.y = Math.round(m.metadata.position.y);
+    });
     const pp = c => Math.round(c).toString().padStart(4, '0')
     const p = m => `${pp(m.metadata.position.x)},${pp(m.metadata.position.y)}`;
     flow.modules.sort((a, b) => p(a).localeCompare(p(b)));
