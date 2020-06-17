@@ -3,6 +3,7 @@
 * Supports exporting flows from connect to local file system
 * Supports uploading flows from local file system to connect
 * Will update ARNs when transfering flows across instances. (This includes support for invoked lambda ARNs, including changing the stage name of lambdas deployed using serverless framework)
+* Can update encryption IDs and certificates for encrypted user input blocks
 
 ## Requirements
 
@@ -35,6 +36,10 @@ connect-sync -u admin -p admin upload my-dev-connect-app -s "./sample-flows/*.js
 
 # Connect to my-prod-connect-app.awsapps.com/connect (with instance id 12345678-9012-3456-7890-123456789012) using federated login
 # (AWS credentials must be set up for a user/role with IAM permissions to GetFederationToken on this instance)
-# Import sample flows from dev into this instance. Update lambda names created by serverless framework to prod stage:
-AWS_PROFILE=connect-admin connect-sync -i 12345678-9012-3456-7890-123456789012 upload my-prod-connect-app -s "./sample-flows/*.json" --serverless-stage prod
+# Import sample flows from dev into this instance. Update lambda names created by serverless framework to prod stage, update encryption certs:
+AWS_PROFILE=connect-admin connect-sync -i 12345678-9012-3456-7890-123456789012 upload my-prod-connect-app \
+    -s "./sample-flows/*.json" \
+    --serverless-stage prod \
+    --encryption-id abcdabcd-1111-4444-1111-0123456789ab
+    --encryption-cert ./connect-prod.cert.pem
 ```

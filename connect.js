@@ -169,7 +169,13 @@ const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editTo
     return body.contactFlowContent;
 };
 
-const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish = false, fixARNs = true, fixLambdaARNs = true, serverlessStage }={}) => {
+const fixFlowCerts = (flowJSON, encryptionId, encryptionCert) => {
+    return flowJSON
+        .replace(/EncryptionKeyId",\s?"value":\s?"([^"]+)"/, (all, key) => all.replace(key, encryptionId))
+        .replace(/EncryptionKey",\s?"value":\s?"([^"]+)"/, (all, cert) => all.replace(cert, String(encryptionCert).replace(/\n/g, '\\n')));
+};
+
+const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish = false, fixARNs = true, fixLambdaARNs = true, serverlessStage, encryptionId, encryptionCert }={}) => {
     if (!token) {
         throw new Error('not logged in');
     }
@@ -178,6 +184,9 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
     }
     if (fixARNs) {
         flowJSON = await fixFlowARNs(instanceAlias, token)(flowARN, flowJSON, { editToken, fixLambdaARNs, serverlessStage });
+    }
+    if (encryptionId && encryptionCert) {
+        flowJSON = fixFlowCerts(flowJSON, encryptionId, encryptionCert);
     }
     const flow = JSON.parse(flowJSON);
     const [arn0, arnInstance, arn1, arnFlow] = flowARN.split('/');
