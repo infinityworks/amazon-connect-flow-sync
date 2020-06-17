@@ -40,6 +40,6 @@ connect-sync -u admin -p admin upload my-dev-connect-app -s "./sample-flows/*.js
 AWS_PROFILE=connect-admin connect-sync -i 12345678-9012-3456-7890-123456789012 upload my-prod-connect-app \
     -s "./sample-flows/*.json" \
     --serverless-stage prod \
-    --encryption-id abcdabcd-1111-4444-1111-0123456789ab
+    --encryption-id abcdabcd-1111-4444-1111-0123456789ab \
     --encryption-cert ./connect-prod.cert.pem
 ```
