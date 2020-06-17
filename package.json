@@ -1,6 +1,6 @@
 {
   "name": "amazon-connect-flow-sync",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "sync contact flows between a local directory and an amazon connect instance",
   "main": "index.js",
   "scripts": {
