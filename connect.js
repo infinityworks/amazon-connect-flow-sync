@@ -95,18 +95,23 @@ const getFlow = (instanceAlias, token) => async ({ arn, contactFlowStatus = 'pub
     const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/export?id=${arn}&status=${contactFlowStatus}`, fetchAuth(token));
     const data = await res.json();
     const flow = JSON.parse(data[0].contactFlowContent);
+    // Handle old metadata format - conver to new format.
     if (Array.isArray(flow.metadata)) {
         flow.metadata = flow.metadata.reduce((acc, obj) => ({...acc, ...obj}), {})
     }
-    flow.metadata.entryPointPosition.x = Math.round(flow.metadata.entryPointPosition.x)
-    flow.metadata.entryPointPosition.y = Math.round(flow.metadata.entryPointPosition.y)
+    // Enforce a consistent ordering of modules to help source control to track real changes.
+    // Also fix connect's broken grid snapping sometimes moving things around unexpectedly.
+    const gridSize = flow.metadata.snapToGrid ? 20 : 0
+    flow.metadata.entryPointPosition.x = Math.round(flow.metadata.entryPointPosition.x / gridSize) * gridSize
+    flow.metadata.entryPointPosition.y = Math.round(flow.metadata.entryPointPosition.y / gridSize) * gridSize
     flow.modules.forEach(m => {
-        m.metadata.position.x = Math.round(m.metadata.position.x);
-        m.metadata.position.y = Math.round(m.metadata.position.y);
+        m.metadata.position.x = Math.round(m.metadata.position.x / gridSize) * gridSize;
+        m.metadata.position.y = Math.round(m.metadata.position.y / gridSize) * gridSize;
     });
     const pp = c => Math.round(c).toString().padStart(4, '0')
     const p = m => `${pp(m.metadata.position.x)},${pp(m.metadata.position.y)}`;
     flow.modules.sort((a, b) => p(a).localeCompare(p(b)));
+    // Add in the metadata fields normally added by the connect UI.
     flow.metadata.status = data[0].contactFlowStatus;
     flow.metadata.name = name;
     flow.metadata.description = description;
