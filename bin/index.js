@@ -133,7 +133,7 @@ program
             if (encryptionCert) {
                 print(`📜 Loading certificate file from ${encryptionCert}`);
                 encryptionCertPem = await readFile(encryptionCert);
-                if (!encryptionCertPem.includes("-BEGIN CERTIFICATE-") || !encryptionCertPem.includes("-END CERTIFICATE-")) {
+                if (!encryptionCertPem.includes("-----BEGIN CERTIFICATE-----") || !encryptionCertPem.includes("-----END CERTIFICATE-----")) {
                     throw new Error("invalid pem file");
                 }
                 println(` ✔`);
