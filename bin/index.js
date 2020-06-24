@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 
+const readline = require('readline');
+const { writeFile, readFile } = require('fs').promises;
 const { program } = require('commander');
 const inquirer = require('inquirer');
 const glob = require('glob-promise');
 const AWS = require('aws-sdk');
 const Connect = require('../connect');
-const { writeFile, readFile } = require('fs').promises;
 
 const print = (str = '') => process.stdout.write(str);
 const println = (str = '') => process.stdout.write(`${str}\n`);
 const reprint = (str = '') => {
-    process.stdout.clearLine();
+    readline.clearLine(process.stdout, 0)
+    readline.cursorTo(process.stdout, 0, null)
     process.stdout.write(`\r${str}`);
 };
 
