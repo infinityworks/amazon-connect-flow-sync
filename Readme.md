@@ -11,7 +11,7 @@ Requires NodeJS 11+
 
 ## Installation
 
-Permanent install (recommended)
+Permanent install
 ```bash
 npm install -g github:infinityworks/amazon-connect-flow-sync
 
@@ -24,7 +24,6 @@ npx github:infinityworks/amazon-connect-flow-sync [options] <command> <instance_
 ```
 
 ## Usage Examples
-
 
 ```bash
 # Connect to my-dev-connect-app.awsapps.com/connect using username and password
@@ -43,4 +42,21 @@ AWS_PROFILE=connect-admin connect-sync -i 12345678-9012-3456-7890-123456789012 u
     --encryption-id abcdabcd-1111-4444-1111-0123456789ab \
     --encryption-cert ./connect-prod.cert.pem \
     --create-missing
+```
+
+### Service Roles
+
+When using fedarated login, there must be a user created in connect with a username matching the userID attached to the IAM role that will be used to execute the command. Where that userID comes from will depend on the principal of the role. The names map to the `aws:userid` column [in this table](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html#principaltable), however where the userID contains a colon, only the part after the colon is used.
+
+For instance, when using a build pipeline, you might assume a role like this:
+```
+aws sts assume-role --role-arn "$ROLE_ARN" --role-session-name mydeploymentpipeline
+```
+where `$ROLE_ARN` is an IAM role with permission to `GetFederationToken` on the instance.
+
+When run under this role, the CLI will try to log in as the user `mydeploymentpipeline`. A user should be set up in connect with this username that has permission to view, edit and publish flows.
+
+The CLI outputs the name of the user it is trying to log in as when it runs like this:
+```
+🔑 Using AWS federated login for mydeploymentpipeline
 ```
