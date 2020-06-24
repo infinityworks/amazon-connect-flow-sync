@@ -176,8 +176,8 @@ const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editTo
 
 const fixFlowCerts = (flowJSON, encryptionId, encryptionCert) => {
     return flowJSON
-        .replace(/EncryptionKeyId",\s?"value":\s?"([^"]+)"/, (all, key) => all.replace(key, encryptionId))
-        .replace(/EncryptionKey",\s?"value":\s?"([^"]+)"/, (all, cert) => all.replace(cert, String(encryptionCert).replace(/\n/g, '\\n')));
+        .replace(/EncryptionKeyId",\s?"value":\s?"([^"]+)"/g, (all, key) => all.replace(key, encryptionId))
+        .replace(/EncryptionKey",\s?"value":\s?"([^"]+)"/g, (all, cert) => all.replace(cert, String(encryptionCert).replace(/\n/g, '\\n')));
 };
 
 const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, publish = false, fixARNs = true, fixLambdaARNs = true, serverlessStage, encryptionId, encryptionCert }={}) => {
