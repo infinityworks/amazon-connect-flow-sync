@@ -227,6 +227,37 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
     }
 };
 
+const createBlankFlow = (instanceAlias, token) => async (name, contactFlowType = "contactFlow", { editToken } = {}) => {
+    if (!token) {
+        throw new Error('not logged in');
+    }
+    if (!editToken) {
+        editToken = await getFlowEditToken(instanceAlias, token, flowARN);
+    }
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/create?token=${editToken}`, {
+        method: 'POST',
+        body: JSON.stringify({
+            name,
+            contactFlowType,
+            contactFlowContent: `{"modules":[],"version":"1","type":"${contactFlowType}","start":"","metadata":{"entryPointPosition":{"x":20,"y":20},"snapToGrid":true}}`,
+            contactFlowStatus: 'saved',
+        }),
+        headers: {
+            "content-type": "application/json;charset=UTF-8",
+            ...fetchAuth(token).headers
+        },
+    });
+    if (!res.headers.get('Content-Type').startsWith("application/json")) {
+        throw new Error(`create: html response`);
+    }
+    if (res.status == 400) {
+        const body = await res.json();
+        throw new Error(`create: status ${res.status}, ${body.map(e => `${e.moduleId}:${e.errorType}:${e.errorDetails}`).join(', ')}`)
+    } else if (res.status > 400) {
+        throw new Error(`create: status ${res.status}`)
+    }
+};
+
 module.exports = async (instanceAlias, { chromiumPath, username, password, instanceId }) => {
     const auth = await getAuthType(instanceAlias);
     let token;
@@ -238,6 +269,7 @@ module.exports = async (instanceAlias, { chromiumPath, username, password, insta
     return {
         listFlows: listFlows(instanceAlias, token),
         getFlow: getFlow(instanceAlias, token),
+        createBlankFlow: createBlankFlow(instanceAlias, token),
         uploadFlow: uploadFlow(instanceAlias, token),
         fixFlowARNs: fixFlowARNs(instanceAlias, token),
     };
