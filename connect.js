@@ -129,6 +129,16 @@ const getFlowEditToken = async (instanceAlias, token, flowARN) => {
     return match[1];
 };
 
+const getFlowCreateToken = async (instanceAlias, token, contactFlowType) => {
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/create?type=${contactFlowType}`, fetchAuth(token));
+    const html = await res.text();
+    match = html.match(/app\.constant\(\"token\", \"(.+)\"\)/);
+    if (match === null) {
+        throw new Error('Failed to get create token');
+    }
+    return match[1];
+};
+
 const fixFlowARNs = (instanceAlias, token) => async (flowARN, flowJSON, { editToken, fixLambdaARNs=true, serverlessStage }={}) => {
     if (!token) {
         throw new Error('not logged in');
@@ -227,14 +237,12 @@ const uploadFlow = (instanceAlias, token) => async (flowARN, flowJSON, { editTok
     }
 };
 
-const createBlankFlow = (instanceAlias, token) => async (name, contactFlowType = "contactFlow", { editToken } = {}) => {
+const createBlankFlow = (instanceAlias, token) => async (name, contactFlowType = "contactFlow") => {
     if (!token) {
         throw new Error('not logged in');
     }
-    if (!editToken) {
-        editToken = await getFlowEditToken(instanceAlias, token, flowARN);
-    }
-    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/create?token=${editToken}`, {
+    const createToken = await getFlowCreateToken(instanceAlias, token, contactFlowType);
+    const res = await fetch(`https://${instanceAlias}.awsapps.com/connect/contact-flows/create?token=${createToken}`, {
         method: 'POST',
         body: JSON.stringify({
             name,

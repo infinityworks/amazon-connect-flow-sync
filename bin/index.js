@@ -108,18 +108,19 @@ program
     .option('--serverless-stage <stage>', 'Modify serverless framework lambda named by setting the stage')
     .option('--encryption-id <uuid>', 'Update the ID of the encryption key used for encrypting customer input')
     .option('--encryption-cert <path.pem>', 'Update the certificate of the encryption key used for encrypting customer input')
+    .option('--create-missing', 'If a flow with a matching name does not exist in the target instance, create it. Otherwise it will fail')
     .option('--no-publish', 'Save flows only. Do not publish')
     .on('--help', () => {
         console.log('');
         console.log('Example:');
         console.log('  connect-sync -u admin upload my-connect-app -s "./login-flows/*.json" --serverless-stage prod');
     })
-    .action(async (instanceAlias, { src, arnFix, lambdaArnFix, publish, serverlessStage, encryptionId, encryptionCert }) => {
+    .action(async (instanceAlias, { src, arnFix, lambdaArnFix, publish, serverlessStage, encryptionId, encryptionCert, createMissing }) => {
         try {
             const connect = await initConnect({ instanceAlias, ...program });
 
             print(`🔍 Fetching current flow list from connect`);
-            const currentFlows = await connect.listFlows();
+            let currentFlows = await connect.listFlows();
             println(' ✔');
 
             print(`💿 Loading flows matching ${src}`);
@@ -139,6 +140,22 @@ program
                 println(` ✔`);
             }
 
+            const missingFlows = flows.filter(f => !currentFlows.some(({ name }) => name === f.metadata.name))
+            if (missingFlows.length) {
+                if (!createMissing) {
+                    throw new Error(`no existing flow named '${missingFlows.map(f => f.metadata.name).join()}'. Run again with --create-missing to create them`);
+                }
+                print(`📝 Creating new placeholder flows`);
+                for (let f in missingFlows) {
+                    const flow = missingFlows[f];
+                    reprint(`📝 Creating new placeholder flows: ${f}/${missingFlows.length} (${flow.metadata.name})`);
+                    await connect.createBlankFlow(flow.metadata.name, flow.metadata.type)
+                }
+                reprint(`📝 Creating new placeholder flows ${missingFlows.length}/${missingFlows.length}`);
+                println(' ✔');
+                currentFlows = await connect.listFlows();
+            }
+
             if (flows.length == 0) {
                 println('😢 No flows found');
             } else {
@@ -147,7 +164,7 @@ program
                     reprint(`📤 Uploading flows: ${f}/${flows.length} (${flows[f].metadata.name})`);
                     const current = currentFlows.find(({name}) => name === flows[f].metadata.name);
                     if (!current) {
-                        throw new Error(`no existing flow named ${flows[f].metadata.name}`);
+                        throw new Error(`unexpected missing flow named ${flows[f].metadata.name}`);
                     }
                     await connect.uploadFlow(current.arn, JSON.stringify(flows[f]), { publish, fixARNs: arnFix, fixLambdaARNs: lambdaArnFix, serverlessStage, encryptionId, encryptionCert: encryptionCertPem });
                 };
@@ -155,7 +172,7 @@ program
                 println(' ✔');
             }
         } catch (err) {
-            println(` ❌ ${err}`);
+            println(`❌ ${err}`);
             process.exit(-1);
         }
         println(`😎 Done`);

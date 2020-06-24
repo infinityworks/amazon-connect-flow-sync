@@ -36,10 +36,11 @@ connect-sync -u admin -p admin upload my-dev-connect-app -s "./sample-flows/*.js
 
 # Connect to my-prod-connect-app.awsapps.com/connect (with instance id 12345678-9012-3456-7890-123456789012) using federated login
 # (AWS credentials must be set up for a user/role with IAM permissions to GetFederationToken on this instance)
-# Import sample flows from dev into this instance. Update lambda names created by serverless framework to prod stage, update encryption certs:
+# Import sample flows from dev into this instance. Update lambda names created by serverless framework to prod stage, update encryption certs, create any flows that don't exist:
 AWS_PROFILE=connect-admin connect-sync -i 12345678-9012-3456-7890-123456789012 upload my-prod-connect-app \
     -s "./sample-flows/*.json" \
     --serverless-stage prod \
     --encryption-id abcdabcd-1111-4444-1111-0123456789ab \
-    --encryption-cert ./connect-prod.cert.pem
+    --encryption-cert ./connect-prod.cert.pem \
+    --create-missing
 ```
