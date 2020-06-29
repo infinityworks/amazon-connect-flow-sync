@@ -124,7 +124,7 @@ const getFlowEditToken = async (instanceAlias, token, flowARN) => {
     const html = await res.text();
     match = html.match(/app\.constant\(\"token\", \"(.+)\"\)/);
     if (match === null) {
-        throw new Error('Failed to get edit token');
+        throw new Error('Failed to get edit token. Check user has permission to edit flows');
     }
     return match[1];
 };
@@ -134,7 +134,7 @@ const getFlowCreateToken = async (instanceAlias, token, contactFlowType) => {
     const html = await res.text();
     match = html.match(/app\.constant\(\"token\", \"(.+)\"\)/);
     if (match === null) {
-        throw new Error('Failed to get create token');
+        throw new Error('Failed to get create token. Check user has permission to create flows');
     }
     return match[1];
 };
