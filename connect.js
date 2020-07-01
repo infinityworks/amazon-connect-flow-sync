@@ -101,9 +101,9 @@ const getFlow = (instanceAlias, token) => async ({ arn, contactFlowStatus = 'pub
     }
     // Enforce a consistent ordering of modules to help source control to track real changes.
     // Also fix connect's broken grid snapping sometimes moving things around unexpectedly.
-    const gridSize = flow.metadata.snapToGrid ? 20 : 0
-    flow.metadata.entryPointPosition.x = Math.round(flow.metadata.entryPointPosition.x / gridSize) * gridSize
-    flow.metadata.entryPointPosition.y = Math.round(flow.metadata.entryPointPosition.y / gridSize) * gridSize
+    const gridSize = flow.metadata.snapToGrid ? 20 : 1;
+    flow.metadata.entryPointPosition.x = Math.round(flow.metadata.entryPointPosition.x / gridSize) * gridSize;
+    flow.metadata.entryPointPosition.y = Math.round(flow.metadata.entryPointPosition.y / gridSize) * gridSize;
     flow.modules.forEach(m => {
         m.metadata.position.x = Math.round(m.metadata.position.x / gridSize) * gridSize;
         m.metadata.position.y = Math.round(m.metadata.position.y / gridSize) * gridSize;
