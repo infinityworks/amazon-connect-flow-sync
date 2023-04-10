@@ -12,7 +12,7 @@
   "author": "Infinity Works",
   "license": "UNLICENSED",
   "dependencies": {
-    "aws-sdk": "^2.688.0",
+    "aws-sdk": "^2.1354.0",
     "commander": "^5.1.0",
     "form-data": "^3.0.0",
     "glob": "^7.1.6",
